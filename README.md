@@ -6,12 +6,13 @@ If you did wish to try it out, I will list some basic usage instructions (intend
 
 1. Pull/download the repo.
 2. Acquire DirectXTexNet and Magick.NET-Q8 from NuGet package manager (or any other source)
-3. The field "baseDirectory" is the folder path you are putting your game files in. This could be your Dark Souls Remastered game folder, but I'd recommend copying them to another place. You also will need to put the color palettes included in the repo into that folder, or you can make your own from any png image.
-4. Add/comment in and out the game file folders in that directior you want to perform actions on. These folders are in the "dirs" list.
-5. Add/comment in and out the actions you'd like to perform on these files in the main loop. To simply pixelize the files, you'd use the "PixelizeFiles" function
-6. Run the program (it will take quite a while depending on how many files you have, but you will see the progress in the console window.
-7. The modified files should be placed in folders of the same name as their input, but with the "outputPrefix" appended to just before the folder name.
-8. Copy the modified files to your game folder.
+3. Open "Program.cs", this is the code where everything is located (yes, it's 2000 lines of code all on one script. I was basically just using this as utility).
+4. The field "baseDirectory" is the folder path you are putting your game files in. This could be your Dark Souls Remastered game folder, but I'd recommend copying them to another place. You also will need to put the color palettes included in the repo into that folder, or you can make your own from any png image.
+5. Add/comment in and out the game file folders in that directior you want to perform actions on. These folders are in the "dirs" list.
+6. Add/comment in and out the actions you'd like to perform on these files in the main loop. To simply pixelize the files, you'd use the "PixelizeFiles" function
+7. Run the program (it will take quite a while depending on how many files you have, but you will see the progress in the console window.
+8. The modified files should be placed in folders of the same name as their input, but with the "outputPrefix" appended to just before the folder name.
+9. Copy the modified files to your game folder.
 
 
 ## Libraries Used
