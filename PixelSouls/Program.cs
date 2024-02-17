@@ -24,43 +24,45 @@ internal class Program
 {
     private static void Main(string[] args)
     {
+        const string baseDirectory = "";
+
 
         PixelArtSettings defaultPixelSettings = new PixelArtSettings("general palette.png", 100f, 120f, 100f, 8);
 
         Dictionary<string[], PixelArtSettings> fileSettings = new Dictionary<string[], PixelArtSettings>()
         {
-            [new string[] { "c2390", "c3440", "c3500", "c4500", "c4510", "c4511" }] = new PixelArtSettings("abyss32.png", 90f, 200f, 98f),
+            [new string[] { "c2390", "c3440", "c3500", "c4500", "c4510", "c4511" }] = new PixelArtSettings(baseDirectory + "abyss32.png", 90f, 200f, 98f),
             [new string[] { "c1200", "c1201", "c1202", "c1203", "c2730", "c2731", "c3270", "c3340", "c3450", "c3451", "c3470", "c3471", "c3472",
-                "c3510", "c3511", "c4190", "c4520", "c4530", "c4531", "c5210", "c5360", "c5361", "c5362" }] = new PixelArtSettings("animal32.png", 100f, 145f),
+                "c3510", "c3511", "c4190", "c4520", "c4530", "c4531", "c5210", "c5360", "c5361", "c5362" }] = new PixelArtSettings(baseDirectory + "animal32.png", 100f, 145f),
             [new string[] { "c2320", "c2360", "c2410", "c2570", "c2790", "c2792", "c2793", "c2794",
                 "c2794", "c2870", "c3460", "c3461", "c4120", "c5270", "c5271", "c5300",
-                "c5351", "c5353", "c4100", "c9990" }] = new PixelArtSettings("armor32.png", 105f, 185f),
-            [new string[] { "c3230", "c2710", "c2711", "c2800", "c3250", "c3300", "c3330", "c5290", "c5291" }] = new PixelArtSettings("crystal32.png", 115f, 200f),
+                "c5351", "c5353", "c4100", "c9990" }] = new PixelArtSettings(baseDirectory + "armor32.png", 105f, 185f),
+            [new string[] { "c3230", "c2710", "c2711", "c2800", "c3250", "c3300", "c3330", "c5290", "c5291" }] = new PixelArtSettings(baseDirectory + "crystal32.png", 115f, 200f),
             [new string[] { "c2230", "c2231", "c2232", "c2250", "c2260", "c2260", "c2290", "c2300",
                 "c2310", "c2430", "c2820", "c2830", "c2840", "c3090", "c3090", "c3110",
                 "c3200", "c3210", "c3240", "c3290", "c3341", "c3390", "c3400", "c3480",
                 "c4150", "c4160", "c4180", "c5200", "c5201", "c5202", "c5250", "c5330",
-                "c5350", "c5352", "c5400", "c5401", "c5280", "c5340" }] = new PixelArtSettings("demon32.png", 95f, 175f, 99f),
+                "c5350", "c5352", "c5400", "c5401", "c5280", "c5340" }] = new PixelArtSettings(baseDirectory + "demon32.png", 95f, 175f, 99f),
             [new string[] { "c2060", "c2210", "c2500", "c2510", "c2530", "c2540", "c2550",
                 "c2560", "c2640", "c2650", "c2660", "c2810", "c2811", "c2860", "c2860",
-                "c3520", "c3421", "c3422", "c4110", "c5370", "c2240" }] = new PixelArtSettings("hollow32.png", 100f, 135f),
+                "c3520", "c3421", "c3422", "c4110", "c5370", "c2240" }] = new PixelArtSettings(baseDirectory + "hollow32.png", 100f, 135f),
             [new string[] { "c0000", "c2370", "c2370", "c2400", "c2520", "c2590", "c2591", "c2600", "c2750",
-                "c3320", "c4090", "c4091", "c4095", "c5310", "c5320" }] = new PixelArtSettings("human32.png", 105, 110),
-            [new string[] { "c2270", "c2280", "c2330", "c2380", "c3350", "c4130", "c4140", "c5230", "c5231" }] = new PixelArtSettings("plant32.png", 100, 130),
+                "c3320", "c4090", "c4091", "c4095", "c5310", "c5320" }] = new PixelArtSettings(baseDirectory + "human32.png", 105, 110),
+            [new string[] { "c2270", "c2280", "c2330", "c2380", "c3350", "c4130", "c4140", "c5230", "c5231" }] = new PixelArtSettings(baseDirectory + "plant32.png", 100, 130),
             [new string[] { "c2700", "c2690", "c3370", "c3380", "c3410", "c3430", "c3431", "c3520", "c3530",
-                "c3531", "c5260", "c5261" }] = new PixelArtSettings("serpent32.png", 100, 155),
+                "c3531", "c5260", "c5261" }] = new PixelArtSettings(baseDirectory + "serpent32.png", 100, 155),
             [new string[] { "c2670", "c2680", "c2791", "c2900", "c2910", "c2920", "c2930", "c2940", "c2950", "c2960",
-                "c3220", "c3490", "c3491", "c3501", "c5220", "c5390" }] = new PixelArtSettings("skeleton32.png", 110, 110),
-            [new string[] { "m10_" }] = new PixelArtSettings("gameboy.png", 100f, 120f),
-            [new string[] { "m11_" }] = new PixelArtSettings("general palette.png", 99f, 105f),
-            [new string[] { "m12_" }] = new PixelArtSettings("general palette.png", 100f, 120f),
-            [new string[] { "m12dlc_" }] = new PixelArtSettings("general palette.png", 100f, 130f),
-            [new string[] { "m13_" }] = new PixelArtSettings("general palette.png", 100f, 115f),
-            [new string[] { "m14_" }] = new PixelArtSettings("general palette.png", 100f, 125f, 98f),
-            [new string[] { "m15_" }] = new PixelArtSettings("general palette.png", 104f, 125f),
-            [new string[] { "m16_" }] = new PixelArtSettings("general palette.png", 96f, 120f),
-            [new string[] { "m17_" }] = new PixelArtSettings("general palette.png", 100f, 135f),
-            [new string[] { "m18_" }] = new PixelArtSettings("general palette.png")
+                "c3220", "c3490", "c3491", "c3501", "c5220", "c5390" }] = new PixelArtSettings(baseDirectory + "skeleton32.png", 110, 110),
+            [new string[] { "m10_" }] = new PixelArtSettings(baseDirectory + "gameboy.png", 100f, 120f),
+            [new string[] { "m11_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 99f, 105f),
+            [new string[] { "m12_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 120f),
+            [new string[] { "m12dlc_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 130f),
+            [new string[] { "m13_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 115f),
+            [new string[] { "m14_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 125f, 98f),
+            [new string[] { "m15_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 104f, 125f),
+            [new string[] { "m16_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 96f, 120f),
+            [new string[] { "m17_" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 135f),
+            [new string[] { "m18_" }] = new PixelArtSettings(baseDirectory + "general palette.png")
         };
 
         Dictionary<int, string[]> lodSettings = new Dictionary<int, string[]>()
@@ -84,12 +86,12 @@ internal class Program
 
         Dictionary<string[], PixelArtSettings> internalBNDFileSettings = new Dictionary<string[], PixelArtSettings>()
         {
-            [new string[] { "m10_00_wall_02.tpf.dcx", "m10_00_wall_02_s.tpf.dcx", "m10_00_wall_02_n.tpf.dcx" }] = new PixelArtSettings("general palette.png", 100f, 120f, 100f, 16),
+            [new string[] { "m10_00_wall_02.tpf.dcx", "m10_00_wall_02_s.tpf.dcx", "m10_00_wall_02_n.tpf.dcx" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 120f, 100f, 16),
 
-            [new string[] { "m13_N_wall_03.tpf.dcx", "m13_N_wall_03_s.tpf.dcx", "m13_N_wall_03_n.tpf.dcx" }] = new PixelArtSettings("general palette.png", 100f, 120f, 100f, 16),
-            [new string[] { "sfx\\Tex\\s93031.tpf" }] = new PixelArtSettings("general palette.png", 100f, 100f, 100f, 16),
-            [new string[] { "m10_nest_eggs.tpf.dcx", "m10_nest_eggs_s.tpf.dcx", "m10_nest_eggs_n.tpf.dcx" }] = new PixelArtSettings("general palette.png", 100f, 50f),
-            [new string[] { "sfx\\Tex\\s20032.tpf" }] = new PixelArtSettings("general palette.png", 100f, 90f)
+            [new string[] { "m13_N_wall_03.tpf.dcx", "m13_N_wall_03_s.tpf.dcx", "m13_N_wall_03_n.tpf.dcx" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 120f, 100f, 16),
+            [new string[] { "sfx\\Tex\\s93031.tpf" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 100f, 100f, 16),
+            [new string[] { "m10_nest_eggs.tpf.dcx", "m10_nest_eggs_s.tpf.dcx", "m10_nest_eggs_n.tpf.dcx" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 50f),
+            [new string[] { "sfx\\Tex\\s20032.tpf" }] = new PixelArtSettings(baseDirectory + "general palette.png", 100f, 90f)
         };
 
         DrawParamColorLayout[] colorLayouts = new DrawParamColorLayout[]{
@@ -122,7 +124,7 @@ internal class Program
             new DrawParamColorLayout("_ToneCorrectBank", "contrastR", "contrastG", "contrastB", ColorConvertType.Average),
         };
 
-        const string baseDirectory = "";
+        
 
         List<string[]> dirs = new List<string[]>
         {
@@ -183,14 +185,14 @@ internal class Program
 
         
         const string outputPrefix = "test2_";
-        string currentPaletteName = defaultPixelSettings.paletteName;
-        string blackWhitePaletteName = "greyscale.png";
-        string normalMapPaletteName = "normals.png";
+        string currentPaletteName = baseDirectory + defaultPixelSettings.paletteName;
+        string blackWhitePaletteName = baseDirectory + "greyscale.png";
+        string normalMapPaletteName = baseDirectory + "normals.png";
 
-        bool pixelizeCubes = true;
+        bool pixelizeCubes = false; //if disabled, cubes will be skipped. if enabled, they will get pixelized (this uses a lot of cpu and time)
 
         IPixelCollection<byte> uniquePixels = new MagickImage(currentPaletteName).UniqueColors().GetPixels();
-        IPixelCollection<byte> defaultPalettePixels = new MagickImage(defaultPixelSettings.paletteName).UniqueColors().GetPixels();
+        IPixelCollection<byte> defaultPalettePixels = new MagickImage(baseDirectory + defaultPixelSettings.paletteName).UniqueColors().GetPixels();
 
         IPixelCollection<byte> greyscalePixels = new MagickImage(blackWhitePaletteName).UniqueColors().GetPixels();
 

@@ -20,15 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="UnityEditor">
-      <HintPath>..\UnityEditor.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>..\UnityEngine.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>

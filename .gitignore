@@ -9,6 +9,8 @@
 *.user
 *.userosscache
 *.sln.docstates
+UnityEditor.dll
+UnityEngine.dll
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
