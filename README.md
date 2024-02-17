@@ -12,3 +12,14 @@ If you did wish to try it out, I will list some basic usage instructions (intend
 6. Run the program (it will take quite a while depending on how many files you have, but you will see the progress in the console window.
 7. The modified files should be placed in folders of the same name as their input, but with the "outputPrefix" appended to just before the folder name.
 8. Copy the modified files to your game folder.
+
+
+## Libraries Used
+* [Soulsformats](https://github.com/JKAnderson/SoulsFormats)
+* [DirectXTexNet](https://github.com/deng0/DirectXTexNet)
+* [Magick.NET](https://github.com/dlemstra/Magick.NET)
+* [MeshDecimator](https://github.com/Whinarn/MeshDecimator)
+
+## Special Thanks
+* Dropoff for teaching me about DirectXTexNet and the basics of 3D model stuff
+* Shadowth117 for allowing me to use the code for calculating tangents.
