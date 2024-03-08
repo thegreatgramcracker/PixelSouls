@@ -10,6 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DS1\**" />
+    <EmbeddedResource Remove="DS1\**" />
+    <None Remove="DS1\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="DirectXTexNet" Version="1.0.3" />
     <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="13.5.0" />
   </ItemGroup>
