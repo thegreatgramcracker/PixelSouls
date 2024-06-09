@@ -364,3 +364,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /PixelSouls/DS1
+/PixelSouls/Program.cs
