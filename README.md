@@ -11,7 +11,8 @@ BND3 binder = BND3.Read(path);
 
 binder.Pixelize(new PixelArtSettings
   {
-    ScaleFactor = 8
+    ScaleFactor = 8,
+    MaxColors = 16
   }
 );
 binder.Write(outputPath);
