@@ -47,33 +47,27 @@ namespace PixelSouls
             }
         }
 
-        public static void Pixelize(this IBinder binder, PixelArtSettings settings, Dictionary<string[], PixelArtSettings> internalBNDFileSettings)
+        public static void Pixelize(this IBinder binder, PixelArtSetting setting)
         {
             foreach (BinderFile file in binder.Files)
             {
                 Console.WriteLine(file.Name);
-                PixelArtSettings settingsToUse = settings;
-                foreach (string[] key in internalBNDFileSettings.Keys)
-                {
-                    bool found = false;
-                    foreach (string name in key)
-                    {
-                        if (file.Name.Contains(name))
-                        {
-                            settingsToUse = internalBNDFileSettings[key];
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) break;
-                }
+
+
                 if (file.Name.EndsWith(".tpf") || file.Name.EndsWith(".tpf.dcx"))
                 {
+                    if (file.Bytes.Length > 0)
+                    {
+                        PixelArtSetting settingToUse = setting;
 
-                    TPF img = TPF.Read(file.Bytes);
-                    img.Pixelize(settingsToUse);
+                        settingToUse = PixelSoulsGlobals.internalBNDSettingsData.SearchFor(file.Name, setting);
 
-                    file.Bytes = img.Write();
+                        TPF img = TPF.Read(file.Bytes);
+                        img.Pixelize(settingToUse);
+
+                        file.Bytes = img.Write();
+                    }
+
                 }
             }
         }

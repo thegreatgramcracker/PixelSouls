@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <PackageReference Include="DirectXTexNet" Version="1.0.3" />
-    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="13.5.0" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="13.6.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -12,156 +12,12 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace PixelSouls
 {
     public static class PixelSoulsHelpers
     {
-        public static byte[] Pixelize(TPF.Texture tex, PixelArtSettings settings)
-        {
-            //converts a DDS texture from Dark Souls in to pixel art
-            bool isDiffuse = true;
-            if (tex.Name.EndsWith("_s") || tex.Name.EndsWith("_n") || tex.Name.Contains("HeightMap") || tex.Name.EndsWith("_h") ||
-                        tex.Name.EndsWith("_t") || tex.Name.EndsWith("_M"))
-            {
-                isDiffuse = false;
-            }
-            DXGI_FORMAT format = GetFormat(tex.Format);
-
-            byte[] finalBytes = null;
-            byte[] convertBytes = null;
-
-            Console.WriteLine(format);
-            if (tex.Name.Contains("_lit_") || format == DXGI_FORMAT.R16G16_FLOAT)
-            {
-                return tex.Bytes;
-            }
-            if (format == DXGI_FORMAT.BC6H_UF16)
-            {
-
-                return PixelizeCube(tex.Bytes);
-            }
-            else
-            {
-                convertBytes = tex.Bytes;
-            }
-            TEX_COMPRESS_FLAGS compressFlags = TEX_COMPRESS_FLAGS.DEFAULT;
-            MagickImage imageFromBytes = new MagickImage(convertBytes, MagickFormat.Dds);
-            bool resize = true;
-            if (imageFromBytes.Width % settings.scaleFactor != 0 || imageFromBytes.Height % settings.scaleFactor != 0)
-            {
-                resize = false;
-                Console.WriteLine("Unable to resize");
-            }
-            if (resize && settings.scaleFactor != 1)
-            {
-
-
-                if (imageFromBytes.Width == settings.scaleFactor && imageFromBytes.Height == settings.scaleFactor)
-                {
-                    imageFromBytes.Resize(new MagickGeometry(1));
-                }
-                else
-                {
-                    imageFromBytes.Blur(0, 1.8);
-                    imageFromBytes.WaveletDenoise(10);
-                    imageFromBytes.InterpolativeResize(imageFromBytes.Width / settings.scaleFactor, imageFromBytes.Height / settings.scaleFactor, PixelInterpolateMethod.Nearest);
-                }
-            }
-
-            if (isDiffuse)
-            {
-
-                imageFromBytes.Modulate(new Percentage(settings.valueCorrection), new Percentage(settings.saturationCorrection), new Percentage(settings.hueCorrection));
-
-                foreach (Pixel pixel in imageFromBytes.GetPixels())
-                {
-
-                    IMagickColor<byte> closestColor = ClosestColor(pixel.ToColor(), settings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
-                    pixel.SetChannel(0, closestColor.R);
-                    pixel.SetChannel(1, closestColor.G);
-                    pixel.SetChannel(2, closestColor.B);
-                    pixel.SetChannel(3, closestColor.A);
-                }
-            }
-            else
-            {
-
-                if (tex.Name.Contains("DetailBump") || tex.Name.Contains("detailbump"))
-                {
-                    //flatten normal
-                    foreach (Pixel pixel in imageFromBytes.GetPixels())
-                    {
-                        pixel.SetChannel(0, 127);
-                        pixel.SetChannel(1, 127);
-                    }
-                }
-                else if (tex.Name.EndsWith("_n"))
-                {
-                    //currentPaletteName = normalMapPaletteName;
-                    //uniquePixels = normalMapPixels;
-                    foreach (Pixel pixel in imageFromBytes.GetPixels())
-                    {
-
-                        IMagickColor<byte> closestColor = ClosestColor(pixel.ToColor(), PixelSoulsGlobals.normalMapColors, PixelSoulsGlobals.normalColorConvertMode);
-                        pixel.SetChannel(0, closestColor.R);
-                        pixel.SetChannel(1, closestColor.G);
-                        pixel.SetChannel(2, closestColor.B);
-                        pixel.SetChannel(3, closestColor.A);
-                    }
-                }
-                else if (tex.Name.EndsWith("_s"))
-                {
-                    bool add = false;
-                    foreach (Pixel pixel in imageFromBytes.GetPixels())
-                    {
-                        if (pixel.ToColor().A < 253)
-                        {
-                            if (!add)
-                            {
-                                Console.WriteLine("ADD, alpha: " + pixel.ToColor().A);
-                                add = true;
-                            }
-                            // if the specular is not full alpha, it means it's an add texture, so color it
-                            IMagickColor<byte> closestColor = ClosestColor(pixel.ToColor(), settings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
-                            pixel.SetChannel(0, closestColor.R);
-                            pixel.SetChannel(1, closestColor.G);
-                            pixel.SetChannel(2, closestColor.B);
-                        }
-                    }
-                }
-            }
-
-            if (resize) imageFromBytes.Scale(imageFromBytes.Width * settings.scaleFactor, imageFromBytes.Height * settings.scaleFactor);
-
-            if (format == DXGI_FORMAT.BC3_UNORM) //bc3
-            {
-                imageFromBytes.Settings.SetDefine(MagickFormat.Dds, "compression", "dxt5");
-                finalBytes = imageFromBytes.ToByteArray(MagickFormat.Dxt5);
-            }
-            else
-            {
-                if (format == DXGI_FORMAT.BC7_UNORM)
-                {
-                    compressFlags = TEX_COMPRESS_FLAGS.BC7_QUICK;
-                }
-                imageFromBytes.Settings.SetDefine(MagickFormat.Dds, "compression", "dxt5");
-                finalBytes = ConvertDDSArrayOfBytes(imageFromBytes.ToByteArray(), format, compressFlags);
-
-                //GCHandle pinnedArray = GCHandle.Alloc(imageFromBytes.ToByteArray(), GCHandleType.Pinned);
-                //var image = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), imageFromBytes.ToByteArray().Length, DDS_FLAGS.NONE);
-                //image = image.Decompress(DXGI_FORMAT.B8G8R8A8_UNORM);
-                //image = image.Compress(format, compressFlags, 0.15f);
-                //image.OverrideFormat(format);
-                //var stream = image.SaveToDDSMemory(DDS_FLAGS.NONE);
-                //stream.Seek(0, SeekOrigin.Begin);
-                //pinnedArray.Free();
-
-                //finalBytes = new byte[stream.Length];
-                //stream.Read(finalBytes);
-            }
-            return finalBytes;
-        }
 
         public static unsafe byte[] PixelizeCube(byte[] tex)
         {
@@ -185,7 +41,7 @@ namespace PixelSouls
                 for (int j = 0; j < img.Width * img.Height; j++)
                 {
                     MagickColor pixelColor = new MagickColor(ptr[offset], ptr[offset + 1], ptr[offset + 2], ptr[offset + 3]);
-                    IMagickColor<byte> closestColor = ClosestColor(pixelColor, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+                    IMagickColor<byte> closestColor = ClosestColor(pixelColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
                     ptr[offset] = closestColor.R;
                     ptr[offset + 1] = closestColor.G;
                     ptr[offset + 2] = closestColor.B;
@@ -237,6 +93,8 @@ namespace PixelSouls
                     return DXGI_FORMAT.BC2_UNORM;
                 case 5:
                     return DXGI_FORMAT.BC3_UNORM;
+                case 10:
+                    return DXGI_FORMAT.R8G8B8A8_UNORM;
                 case 24:
                     return DXGI_FORMAT.BC1_UNORM; //weird normal texture
                 case 35:
@@ -253,7 +111,24 @@ namespace PixelSouls
             }
         }
 
-        public static IMagickColor<byte> ClosestColor(IMagickColor<byte> inputColor, IPixelCollection<byte> palette, ClosestColorType mode)
+        public static TextureType GetTextureType(string texName, DXGI_FORMAT texFormat)
+        {
+            if (texName.EndsWith("_s")) return TextureType.Specular;
+            if (texName.EndsWith("_n")) return TextureType.Normal;
+            if (texName.EndsWith("_h") || texName.Contains("HeightMap")) return TextureType.Heightmap;
+            if (texName.Contains("_lit_")) return TextureType.Lightmap;
+            if (texName.EndsWith("_c") || texName.Contains("EnvDif") || texName.Contains("EnvSpc") || texName.Contains("_env_")) return TextureType.Cube;
+            if (texName.Contains("DetailBump") || texName.Contains("detailbump")) return TextureType.DetailBump;
+            if (texName.EndsWith("_t") || texName.EndsWith("_M") ||
+                texFormat == DXGI_FORMAT.R16G16_FLOAT || texFormat == DXGI_FORMAT.R8G8B8A8_UNORM)
+            {
+                return TextureType.Ignore;
+            }
+
+            return TextureType.Diffuse;
+        }
+
+        public static IMagickColor<byte> ClosestColor(IMagickColor<byte> inputColor, IPixelCollection<byte> palette, string mode)
         {
             //calculates the closest color on a given palette to the input color, different modes can be used to find the closest color.
             if (inputColor.A <= 0)
@@ -263,7 +138,7 @@ namespace PixelSouls
             double minDist = 9999999;
             IMagickColor<byte> convertColor = palette.GetPixel(0, 0).ToColor();
 
-            if (mode == ClosestColorType.Perceptual)
+            if (mode == "Perceptual")
             {
                 //float meanValue = (inputColor.R + inputColor.G + inputColor.B) / 3f;
                 //float lumi = (158f - (0.299f * inputColor.R + 0.587f * inputColor.G + 0.114f * inputColor.B)) / 255f;
@@ -281,7 +156,7 @@ namespace PixelSouls
 
                 }
             }
-            else if (mode == ClosestColorType.Value)
+            else if (mode == "Value")
             {
                 byte inputVal = new byte[] { inputColor.R, inputColor.G, inputColor.B }.Max();
                 if (inputVal < 8)
@@ -305,7 +180,7 @@ namespace PixelSouls
                     convertColor = palette.GetPixel(3, 0).ToColor();
                 }
             }
-            else if (mode == ClosestColorType.LinearRGB)
+            else if (mode == "LinearRGB")
             {
                 foreach (IPixel<byte> pixel in palette)
                 {
@@ -318,6 +193,8 @@ namespace PixelSouls
 
                 }
             }
+
+
             if (inputColor.A < 36)
             {
 
@@ -340,6 +217,11 @@ namespace PixelSouls
                 convertColor.A = 255;
             }
             return convertColor;
+        }
+
+        public static byte ConvertToPS1ColorChannel(byte inputChannel)
+        {
+            return ClampToByte((float)Math.Round(inputChannel / 8.225806f) * 8.225806f);
         }
 
         public static double ColorDifference(IMagickColor<byte> color1, IMagickColor<byte> color2)
@@ -449,7 +331,7 @@ namespace PixelSouls
                     ClampToByte(float.Parse(node.Attributes["r"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["g"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["b"].Value) * 255));
-                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
                 node.Attributes["r"].Value = (closestColor.R / 255f).ToString("N9");
                 node.Attributes["g"].Value = (closestColor.G / 255f).ToString("N9");
                 node.Attributes["b"].Value = (closestColor.B / 255f).ToString("N9");
@@ -464,7 +346,7 @@ namespace PixelSouls
                     ClampToByte(float.Parse(node.Attributes["r"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["g"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["b"].Value) * 255));
-                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
                 node.Attributes["r"].Value = (closestColor.R / 255f).ToString("N9");
                 node.Attributes["g"].Value = (closestColor.G / 255f).ToString("N9");
                 node.Attributes["b"].Value = (closestColor.B / 255f).ToString("N9");
@@ -476,7 +358,7 @@ namespace PixelSouls
                     ClampToByte(float.Parse(node.Attributes["r"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["g"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["b"].Value) * 255));
-                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
                 node.Attributes["r"].Value = (closestColor.R / 255f).ToString("N9");
                 node.Attributes["g"].Value = (closestColor.G / 255f).ToString("N9");
                 node.Attributes["b"].Value = (closestColor.B / 255f).ToString("N9");
@@ -488,7 +370,7 @@ namespace PixelSouls
                     ClampToByte(float.Parse(node.Attributes["r"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["g"].Value) * 255),
                     ClampToByte(float.Parse(node.Attributes["b"].Value) * 255));
-                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+                IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(xmlColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
                 node.Attributes["r"].Value = (closestColor.R / 255f).ToString("N9");
                 node.Attributes["g"].Value = (closestColor.G / 255f).ToString("N9");
                 node.Attributes["b"].Value = (closestColor.B / 255f).ToString("N9");
@@ -632,7 +514,7 @@ namespace PixelSouls
                     ClampToByte(GetNodeColor(redNode, redNodeType, 0) * 255),
                     ClampToByte(GetNodeColor(greenNode, greenNodeType, 0) * 255),
                     ClampToByte(GetNodeColor(blueNode, blueNodeType, 0) * 255));
-            IMagickColor<byte> constClosestColor = PixelSoulsHelpers.ClosestColor(constXmlColor, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+            IMagickColor<byte> constClosestColor = PixelSoulsHelpers.ClosestColor(constXmlColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
             for (int i = 0; i < maxSequences; i++)
             {
                 for (int j = 0; j < maxWidth; j++)
@@ -643,7 +525,7 @@ namespace PixelSouls
                         ClampToByte(currentColor[0] * 255 / currentMult),
                         ClampToByte(currentColor[1] * 255 / currentMult),
                         ClampToByte(currentColor[2] * 255 / currentMult));
-                    IMagickColor<byte> currentClosestColor = PixelSoulsHelpers.ClosestColor(currentXmlColor, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+                    IMagickColor<byte> currentClosestColor = PixelSoulsHelpers.ClosestColor(currentXmlColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
                     if (redNodeType == ValueNodeType.FloatSequence) { redNode.ChildNodes[i].Attributes["value"].Value = (currentClosestColor.R / 255f * currentMult).ToString("N9"); }
                     if (redNodeType == ValueNodeType.Float3Sequence)
                     {
@@ -711,28 +593,137 @@ namespace PixelSouls
 
         #region Experimental
 
-        static byte[] PixelizeDiffuseWithNormal(TPF.Texture diffuse, TPF.Texture normal, PixelArtSettings settings)
+        public static void DumpPNGTexturesFromBNDFolder(string dir, string outputDir)
         {
-            //unfinished function
-            byte[] finalBytes = null;
-
-            MagickImage diffuseImage = new MagickImage(diffuse.Bytes, MagickFormat.Dds);
-            MagickImage normalImage = new MagickImage(normal.Bytes, MagickFormat.Dds);
-
-            if (diffuseImage.Width != normalImage.Width || diffuseImage.Height != normalImage.Height)
+            string[] files = Directory.GetFiles(dir);
+            foreach (string file in files)
             {
-                Console.WriteLine("diffuse and normal do not match");
+                if (file.EndsWith("_l.partsbnd.dcx"))
+                {
+                    BND3 binder = BND3.Read(file);
+                    foreach (BinderFile binderFile in binder.Files)
+                    {
+                        if (binderFile.Name.EndsWith(".tpf"))
+                        {
+                            TPF tpf = TPF.Read(binderFile.Bytes);
+                            foreach (TPF.Texture texture in tpf.Textures)
+                            {
+                                if (!texture.Name.EndsWith("_n") && !texture.Name.EndsWith("_s") && !texture.Name.EndsWith("_N") && !texture.Name.EndsWith("_S"))
+                                {
+                                    MagickImage magickImage = new MagickImage(texture.Headerize());
+                                    magickImage.Format = MagickFormat.Png;
+                                    magickImage.Write(outputDir + "\\" + texture.Name + ".png");
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            diffuseImage.Blur(0, 1.8);
-            normalImage.Blur(0, 1.8);
-            diffuseImage.WaveletDenoise(10);
-            normalImage.WaveletDenoise(10);
-            diffuseImage.InterpolativeResize(diffuseImage.Width / settings.scaleFactor, diffuseImage.Height / settings.scaleFactor, PixelInterpolateMethod.Nearest);
-            normalImage.InterpolativeResize(normalImage.Width / settings.scaleFactor, normalImage.Height / settings.scaleFactor, PixelInterpolateMethod.Nearest);
-
-
-            return finalBytes;
         }
+
+        public static unsafe void ImportPNGTexturesFromFolder(string fromDir, string toDir)
+        {
+            foreach (string file in Directory.GetFiles(toDir))
+            {
+                if (file.EndsWith(".partsbnd") || file.EndsWith(".partsbnd.dcx"))
+                {
+                    Console.WriteLine(file);
+                    BND3 bnd = BND3.Read(file);
+                    foreach (BinderFile binderFile in bnd.Files)
+                    {
+                        if (binderFile.Name.EndsWith(".tpf") || binderFile.Name.EndsWith(".tpf.dcx"))
+                        {
+                            TPF tpf = TPF.Read(binderFile.Bytes);
+                            foreach (TPF.Texture tex in tpf.Textures)
+                            {
+                                Console.WriteLine(tex.Name);
+                                if (Directory.GetFiles(fromDir).Contains(fromDir + "\\" + tex.Name + ".png"))
+                                {
+                                    Console.WriteLine("writing " + tex.Name);
+                                    MagickImage importImage = new MagickImage(fromDir + "\\" + tex.Name + ".png");
+                                    if (tex.Header.Unk1 == 120) return;
+
+                                    DXGI_FORMAT format = GetFormat(tex.Format);
+
+                                    byte[] bytes = PixelSoulsGlobals.game == GameType.DeS ? tex.Headerize() : tex.Bytes;
+
+                                    GCHandle pinnedArray = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+
+                                    ScratchImage texImage = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), bytes.Length, DDS_FLAGS.NONE);
+
+                                    texImage = texImage.Decompress(DXGI_FORMAT.R8G8B8A8_UNORM);
+
+                                    var stream = texImage.SaveToDDSMemory(DDS_FLAGS.NONE);
+                                    stream.Seek(0, SeekOrigin.Begin);
+                                    byte[] decompressedBytes = new byte[stream.Length];
+                                    stream.Read(decompressedBytes);
+
+                                    pinnedArray.Free();
+
+                                    MagickImage magickImage = new MagickImage(decompressedBytes);
+                                    magickImage.Settings.SetDefine(MagickFormat.Dds, "compression", "none");
+
+                                    magickImage.ImportPixels(importImage.GetPixels().ToByteArray("RGBA"), new PixelImportSettings(magickImage.Width, magickImage.Height, StorageType.Char, "RGBA"));
+
+                                    GCHandle pinnedArray2 = GCHandle.Alloc(magickImage.ToByteArray(), GCHandleType.Pinned);
+
+                                    ScratchImage finalImage = TexHelper.Instance.LoadFromDDSMemory(pinnedArray2.AddrOfPinnedObject(), magickImage.ToByteArray().Length, DDS_FLAGS.NONE);
+                                    finalImage = finalImage.GenerateMipMaps(TEX_FILTER_FLAGS.POINT, 0);
+                                    finalImage = finalImage.Compress(format, format == DXGI_FORMAT.BC7_UNORM ? TEX_COMPRESS_FLAGS.BC7_QUICK : TEX_COMPRESS_FLAGS.DEFAULT, 0.5f);
+
+
+                                    
+
+
+
+                                    if (PixelSoulsGlobals.game == GameType.DeS)
+                                    {
+                                        byte* pixels = (byte*)finalImage.GetImage(0).Pixels;
+                                        int len = tex.Bytes.Length;
+                                        using (UnmanagedMemoryStream memoryStream = new UnmanagedMemoryStream(pixels, len, len, FileAccess.Read))
+                                        {
+
+                                            memoryStream.Seek(0, SeekOrigin.Begin);
+                                            byte[] imageBytes = new byte[len];
+                                            memoryStream.Read(imageBytes, 0, len);
+                                            tex.Bytes = imageBytes;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        using (UnmanagedMemoryStream memoryStream = finalImage.SaveToDDSMemory(DDS_FLAGS.NONE))
+                                        {
+
+                                            memoryStream.Seek(0, SeekOrigin.Begin);
+                                            byte[] imageBytes = new byte[memoryStream.Length];
+                                            memoryStream.Read(imageBytes);
+                                            tex.Bytes = imageBytes;
+                                        }
+                                    }
+                                    pinnedArray2.Free();
+
+
+                                }
+                            }
+                            binderFile.Bytes = tpf.Write();
+                        }
+                    }
+                    bnd.Write(file);
+                }
+            }
+        }
+
+        public static void DumpMipmaps(string path, string filename)
+        {
+            ScratchImage texImage = TexHelper.Instance.LoadFromDDSFile(path + "\\" + filename, DDS_FLAGS.NONE);
+
+            for (int i = 0; i < texImage.GetImageCount(); i++)
+            {
+                texImage.SaveToDDSFile(i, DDS_FLAGS.NONE, path + "\\" + i + "_" + filename);
+                
+            }
+        }
+
 
         static void DiversePaletteFromImage(IPixelCollection<byte> imagePixels, int colorCount)
         {

@@ -31,7 +31,7 @@ namespace PixelSouls
                 else if (layout.convertType == ColorConvertType.PaletteMatch)
                 {
                     MagickColor inputVal = new MagickColor(Convert.ToByte(row[layout.colorRCellName].Value), Convert.ToByte(row[layout.colorGCellName].Value), Convert.ToByte(row[layout.colorBCellName].Value));
-                    IMagickColor<byte> convertColor = PixelSoulsHelpers.ClosestColor(inputVal, PixelSoulsGlobals.defaultPixelSettings.colors, PixelSoulsGlobals.diffuseColorConvertMode);
+                    IMagickColor<byte> convertColor = PixelSoulsHelpers.ClosestColor(inputVal, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
                     row[layout.colorRCellName].Value = (short)convertColor.R;
                     row[layout.colorGCellName].Value = (short)convertColor.G;
                     row[layout.colorBCellName].Value = (short)convertColor.B;
