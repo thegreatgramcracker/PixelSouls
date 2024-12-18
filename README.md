@@ -9,7 +9,7 @@ You can pixelize all texture files in a binder simply by calling
 ```
 BND3 binder = BND3.Read(path);
 
-binder.Pixelize(new PixelArtSettings
+binder.Pixelize(new PixelArtSetting
   {
     ScaleFactor = 8,
     MaxColors = 16
@@ -23,8 +23,8 @@ A similar process can be used for TPF files, and every other format that the lib
 * [Soulsformats](https://github.com/JKAnderson/SoulsFormats)
 * [DirectXTexNet](https://github.com/deng0/DirectXTexNet)
 * [Magick.NET](https://github.com/dlemstra/Magick.NET)
-* [MeshDecimator](https://github.com/Whinarn/MeshDecimator)
 
 ## Special Thanks
 * Dropoff for teaching me about DirectXTexNet and the basics of 3D model stuff
 * Shadowth117 for allowing me to use the code for calculating tangents.
+* Stayd3D for PS1 Dither Matrix
