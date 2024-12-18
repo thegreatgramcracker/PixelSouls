@@ -1,8 +1,5 @@
 ﻿using DirectXTexNet;
 using ImageMagick;
-using MeshDecimator.Algorithms;
-using MeshDecimator.Math;
-using MeshDecimator;
 using SoulsFormats;
 using System;
 using System.Collections.Generic;
@@ -13,52 +10,54 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 using static System.Net.Mime.MediaTypeNames;
+using System.Net.Http.Headers;
+using System.Security.Cryptography.X509Certificates;
 
 namespace PixelSouls
 {
     public static class PixelSoulsHelpers
     {
 
-        public static unsafe byte[] PixelizeCube(byte[] tex)
-        {
-            //pixelizes cubemaps, uses a lot of CPU power to do so.
-            GCHandle pinnedArray = GCHandle.Alloc(tex, GCHandleType.Pinned);
+        //public static unsafe byte[] PixelizeCube(byte[] tex)
+        //{
+        //    //pixelizes cubemaps, uses a lot of CPU power to do so.
+        //    GCHandle pinnedArray = GCHandle.Alloc(tex, GCHandleType.Pinned);
 
-            ScratchImage cubeImage = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), tex.Length, DDS_FLAGS.NONE);
+        //    ScratchImage cubeImage = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), tex.Length, DDS_FLAGS.NONE);
 
-            cubeImage = cubeImage.Decompress(DXGI_FORMAT.R8G8B8A8_UNORM);
+        //    cubeImage = cubeImage.Decompress(DXGI_FORMAT.R8G8B8A8_UNORM);
 
-            for (int i = 0; i < cubeImage.GetImageCount(); i++)
-            {
-                Console.WriteLine("Image " + i);
-                var img = cubeImage.GetImage(i);
-                Console.WriteLine(img.Format);
-                Console.WriteLine(img.Width + ", " + img.Height);
-                byte* ptr = (byte*)img.Pixels;
-                int len = img.Width * img.Height * 4;
+        //    for (int i = 0; i < cubeImage.GetImageCount(); i++)
+        //    {
+        //        Console.WriteLine("Image " + i);
+        //        var img = cubeImage.GetImage(i);
+        //        Console.WriteLine(img.Format);
+        //        Console.WriteLine(img.Width + ", " + img.Height);
+        //        byte* ptr = (byte*)img.Pixels;
+        //        int len = img.Width * img.Height * 4;
 
-                int offset = 0;
-                for (int j = 0; j < img.Width * img.Height; j++)
-                {
-                    MagickColor pixelColor = new MagickColor(ptr[offset], ptr[offset + 1], ptr[offset + 2], ptr[offset + 3]);
-                    IMagickColor<byte> closestColor = ClosestColor(pixelColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
-                    ptr[offset] = closestColor.R;
-                    ptr[offset + 1] = closestColor.G;
-                    ptr[offset + 2] = closestColor.B;
-                    ptr[offset + 3] = closestColor.A;
-                    offset += 4;
-                }
-            }
-            cubeImage = cubeImage.Compress(DXGI_FORMAT.BC6H_UF16, TEX_COMPRESS_FLAGS.PARALLEL, 0.15f);
-            cubeImage.OverrideFormat(DXGI_FORMAT.BC6H_UF16);
-            var stream = cubeImage.SaveToDDSMemory(DDS_FLAGS.NONE);
-            stream.Seek(0, SeekOrigin.Begin);
-            pinnedArray.Free();
+        //        int offset = 0;
+        //        for (int j = 0; j < img.Width * img.Height; j++)
+        //        {
+        //            MagickColor pixelColor = new MagickColor(ptr[offset], ptr[offset + 1], ptr[offset + 2], ptr[offset + 3]);
+        //            IMagickColor<byte> closestColor = ClosestColor(pixelColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
+        //            ptr[offset] = closestColor.R;
+        //            ptr[offset + 1] = closestColor.G;
+        //            ptr[offset + 2] = closestColor.B;
+        //            ptr[offset + 3] = closestColor.A;
+        //            offset += 4;
+        //        }
+        //    }
+        //    cubeImage = cubeImage.Compress(DXGI_FORMAT.BC6H_UF16, TEX_COMPRESS_FLAGS.PARALLEL, 0.15f);
+        //    cubeImage.OverrideFormat(DXGI_FORMAT.BC6H_UF16);
+        //    var stream = cubeImage.SaveToDDSMemory(DDS_FLAGS.NONE);
+        //    stream.Seek(0, SeekOrigin.Begin);
+        //    pinnedArray.Free();
 
-            byte[] finalBytes = new byte[stream.Length];
-            stream.Read(finalBytes);
-            return finalBytes;
-        }
+        //    byte[] finalBytes = new byte[stream.Length];
+        //    stream.Read(finalBytes);
+        //    return finalBytes;
+        //}
 
         static byte[] ConvertDDSArrayOfBytes(byte[] inputBytes, DXGI_FORMAT targetFormat, TEX_COMPRESS_FLAGS compressFlags = TEX_COMPRESS_FLAGS.DEFAULT, DXGI_FORMAT decompressFormat = DXGI_FORMAT.B8G8R8A8_UNORM)
         {
@@ -113,14 +112,17 @@ namespace PixelSouls
 
         public static TextureType GetTextureType(string texName, DXGI_FORMAT texFormat)
         {
-            if (texName.EndsWith("_s")) return TextureType.Specular;
-            if (texName.EndsWith("_n")) return TextureType.Normal;
+            if (texName.EndsWith("_s") || texName.EndsWith("_S")) return TextureType.Specular;
+            if (texName.EndsWith("_n") || texName.EndsWith("_N")) return TextureType.Normal;
             if (texName.EndsWith("_h") || texName.Contains("HeightMap")) return TextureType.Heightmap;
             if (texName.Contains("_lit_")) return TextureType.Lightmap;
-            if (texName.EndsWith("_c") || texName.Contains("EnvDif") || texName.Contains("EnvSpc") || texName.Contains("_env_")) return TextureType.Cube;
+            if (texName.EndsWith("_c") 
+                || texName.Contains("EnvDif") || texName.Contains("EnvSpc") 
+                || texName.Contains("envdif") || texName.Contains("envspc") 
+                || texName.Contains("_env_") || texName.EndsWith("_env")) return TextureType.Cube;
             if (texName.Contains("DetailBump") || texName.Contains("detailbump")) return TextureType.DetailBump;
             if (texName.EndsWith("_t") || texName.EndsWith("_M") ||
-                texFormat == DXGI_FORMAT.R16G16_FLOAT || texFormat == DXGI_FORMAT.R8G8B8A8_UNORM)
+                texFormat == DXGI_FORMAT.R16G16_FLOAT )
             {
                 return TextureType.Ignore;
             }
@@ -223,6 +225,25 @@ namespace PixelSouls
         {
             return ClampToByte((float)Math.Round(inputChannel / 8.225806f) * 8.225806f);
         }
+        public static byte ConvertToPS1AlphaChannel(byte inputChannel)
+        {
+            if (inputChannel > 190)
+            {
+                return 255;
+            }
+            else if (inputChannel > 96)
+            {
+                return 127;
+            }
+            else if (inputChannel > 32)
+            {
+                return 64;
+            }
+            else
+            {
+                return 0;
+            }
+        }
 
         public static double ColorDifference(IMagickColor<byte> color1, IMagickColor<byte> color2)
         {
@@ -237,10 +258,10 @@ namespace PixelSouls
             return dist;
         }
 
-        public static byte ColorDifferenceLinearRGB(IMagickColor<byte> color1, IMagickColor<byte> color2)
+        public static float ColorDifferenceLinearRGB(IMagickColor<byte> color1, IMagickColor<byte> color2)
         {
             //returns the linear total distance of two colors RGB values
-            byte dist = ClampToByte(Math.Abs(color1.R - color2.R) + Math.Abs(color1.G - color2.G) + Math.Abs(color1.B - color2.B));
+            float dist = (Math.Abs(color1.R - color2.R) + Math.Abs(color1.G - color2.G) + Math.Abs(color1.B - color2.B)) / 765f;
 
             return dist;
         }
@@ -589,9 +610,77 @@ namespace PixelSouls
             return colorValue;
         }
 
+        public static void ScaleDRB(string file, string tpfPath, int scaleFactor)
+        {
+            DRB menuDRB = DRB.Read(file, DRB.DRBVersion.DarkSouls);
+            TPF menuTPF = TPF.Read(tpfPath);
+            
+
+
+            foreach (DRB.Dlg dlg in menuDRB.Dlgs)
+            {
+                foreach (DRB.Dlgo dlgo in dlg.Dlgos)
+                {
+                    if (dlgo.Shape is DRB.Shape.SpriteBase)
+                    {
+                        Console.WriteLine("based");
+                        DRB.Shape.SpriteBase? spriteBase = (dlgo.Shape as DRB.Shape.SpriteBase);
+                        if (spriteBase.TextureIndex < 0) continue;
+                        short texHeight = menuTPF.Textures[spriteBase.TextureIndex].Header.Height;
+                        short texWidth = menuTPF.Textures[spriteBase.TextureIndex].Header.Width;
+
+                        spriteBase.TexTopEdge = (short)QuantizeToScale(spriteBase.TexTopEdge, scaleFactor);
+                        spriteBase.TexBottomEdge = (short)QuantizeToScale(spriteBase.TexBottomEdge, scaleFactor);
+                        spriteBase.TexLeftEdge = (short)QuantizeToScale(spriteBase.TexLeftEdge, scaleFactor);
+                        spriteBase.TexRightEdge = (short)QuantizeToScale(spriteBase.TexRightEdge, scaleFactor);
+                    }
+
+                }
+
+            }
+            menuDRB.Write("G:\\Code and Video Game Stuff\\Dark Souls Modding\\Pixel Souls Files\\DeS\\_out\\menu.drb");
+        }
+
+        public static void PS1Dither(MagickImage image)
+        {
+            int[][] matrix = new int[4][]
+            {
+                new int[] { -4, 0, -3, 1},
+                new int[] { 2, -2, 3, -1},
+                new int[] { -3, 1, -4, 0},
+                new int[] { 3, -1, 2, -2}
+            };
+            for (int x = 0; x < image.Width; x++)
+            {
+                for(int y = 0; y < image.Height; y++)
+                {
+                    IPixel<byte> pixel = image.GetPixels().GetPixel(x, y);
+                    image.GetPixels().SetPixel(x, y, 
+                        new byte[]
+                        {
+                            ClampToByte(pixel.GetChannel(0) + matrix[x % 4][y % 4]),
+                            ClampToByte(pixel.GetChannel(1) + matrix[x % 4][y % 4]),
+                            ClampToByte(pixel.GetChannel(2) + matrix[x % 4][y % 4]),
+                            pixel.GetChannel(3)
+                        }
+                        );
+                }
+            }
+        }
+
+
+        public static int QuantizeToScale(int value, int scaleFactor)
+        {
+            float ratio = (float)value / scaleFactor;
+
+            return (int)MathF.Round(ratio) * scaleFactor;
+        }
+
 
 
         #region Experimental
+
+
 
         public static void DumpPNGTexturesFromBNDFolder(string dir, string outputDir)
         {
@@ -713,121 +802,6 @@ namespace PixelSouls
             }
         }
 
-        public static void DumpMipmaps(string path, string filename)
-        {
-            ScratchImage texImage = TexHelper.Instance.LoadFromDDSFile(path + "\\" + filename, DDS_FLAGS.NONE);
-
-            for (int i = 0; i < texImage.GetImageCount(); i++)
-            {
-                texImage.SaveToDDSFile(i, DDS_FLAGS.NONE, path + "\\" + i + "_" + filename);
-                
-            }
-        }
-
-
-        static void DiversePaletteFromImage(IPixelCollection<byte> imagePixels, int colorCount)
-        {
-            //unused, wip, unfinished, cast in the fire
-            List<IMagickColor<byte>> palette = new List<IMagickColor<byte>>();
-
-            foreach (IPixel<byte> pixel in imagePixels)
-            {
-                if (pixel.ToColor().A <= 0) continue;
-                palette.Add(pixel.ToColor());
-            }
-            int totalIterations = palette.Count;
-            int currentIterations = 0;
-            Console.WriteLine(currentIterations + " out of " + totalIterations + " iterations done");
-
-            List<ColorDistObject> colorDists = new List<ColorDistObject>();
-
-            for (int i = 0; i < palette.Count; i++)
-            {
-                IMagickColor<byte> currentColor = palette[i];
-                double minDist = 999999;
-                for (int j = 0; j < palette.Count; j++)
-                {
-                    if (i == j) continue;
-                    double dist = PixelSoulsHelpers.ColorDifference(palette[i], palette[j]);
-                    if (dist < minDist)
-                    {
-                        minDist = dist;
-                    }
-                }
-                colorDists.Add(new ColorDistObject(currentColor, minDist));
-                currentIterations++;
-                Console.WriteLine(currentIterations + " out of " + totalIterations + " iterations done");
-            }
-            colorDists = colorDists.OrderByDescending(o => o.dist).ToList();
-            while (colorDists.Count > colorCount)
-            {
-                IMagickColor<byte>[] lowestPair = new IMagickColor<byte>[] { colorDists[colorDists.Count - 1].color, colorDists[colorDists.Count - 2].color };
-                MagickColor newColor = new MagickColor((byte)((lowestPair[0].R + lowestPair[1].R) / 2), (byte)((lowestPair[0].G + lowestPair[1].G) / 2), (byte)((lowestPair[0].B + lowestPair[1].B) / 2));
-                double newDist = (colorDists[colorDists.Count - 1].dist + colorDists[colorDists.Count - 2].dist) / 2;
-                colorDists.RemoveAt(colorDists.Count - 1);
-                colorDists.RemoveAt(colorDists.Count - 1);
-                colorDists.Add(new ColorDistObject(newColor, newDist));
-            }
-            //colorDists.Reverse();
-            palette.Clear();
-            for (int i = 0; i < colorCount; i++)
-            {
-                if (i < colorDists.Count)
-                {
-                    palette.Add(colorDists[i].color);
-                }
-            }
-
-            //List<ColorDistObject> colorPairs = new List<ColorDistObject>();
-            //for (int i = 0; i < palette.Count; i++)
-            //{
-            //    for (int j = i + 1; j < palette.Count; j++)
-            //    {
-            //        colorPairs.Add(new ColorDistObject(palette[i], palette[j], ColorDifference(palette[i], palette[j])));
-            //    }
-            //}
-            //colorPairs = colorPairs.OrderByDescending(o => o.dist).ToList();
-            //while (palette.Count > colorCount)
-            //{
-
-            //    IMagickColor<byte>[] lowestPair = new IMagickColor<byte>[] {colorPairs.Last().color1, colorPairs.Last().color2 };
-            //    MagickColor newColor = new MagickColor((byte)((lowestPair[0].R + lowestPair[1].R) / 2), (byte)((lowestPair[0].G + lowestPair[1].G) / 2), (byte)((lowestPair[0].B + lowestPair[1].B) / 2));
-            //    colorPairs.RemoveAt(colorPairs.Count - 1);
-            //    palette.Remove(lowestPair[0]);
-            //    palette.Remove(lowestPair[1]);
-            //    List<ColorDistObject> pairsToInsert = new List<ColorDistObject>();
-            //    for (int i = 0; i < palette.Count; i++)
-            //    {
-            //        pairsToInsert.Add(new ColorDistObject(newColor, palette[i], ColorDifference(newColor, palette[i])));
-            //    }
-            //    for(int i = 0; i < pairsToInsert.Count; i++)
-            //    {
-            //        for (int j = 0; j < colorPairs.Count; j++)
-            //        {
-            //            if (pairsToInsert[i].dist < colorPairs[j].dist)
-            //            {
-            //                colorPairs.Insert(j + 1, pairsToInsert[i]);
-            //                break;
-            //            }
-            //        }
-            //    }
-            //    palette.Add(newColor);
-            //    currentIterations++;
-            //    Console.WriteLine(currentIterations + " out of " + totalIterations + " iterations done");
-            //}
-            int num = 0;
-            MagickImage image = new MagickImage(new MagickColor(255, 255, 255, 255), colorCount, 1);
-            IPixelCollection<byte> pixels = image.GetPixels();
-            foreach (IMagickColor<byte> color in palette)
-            {
-                pixels.SetPixel(num, 0, color.ToByteArray());
-                Console.WriteLine(num + ": " + color.ToString());
-                num++;
-            }
-            image.Write("bingus.png");
-
-
-        }
 
         #endregion
 
@@ -842,7 +816,6 @@ namespace PixelSouls
 
             BinderFile partFlver = null;
             BinderFile matchingPartFlver = null;
-            FLVER2 thing = null;
             int totalFiles = destFiles.Length;
             int currentFiles = 0;
 
@@ -925,237 +898,6 @@ namespace PixelSouls
 
                 Console.WriteLine(currentFiles + " finished out of " + totalFiles + " files.");
             }
-        }
-        static FLVER2 DecimateFlver(FLVER2 flv)
-        {
-            //decimates a flver
-            //FLVER2 flv = FLVER2.Read(filePath);
-            List<Vector3d> meshVerts = new List<Vector3d>();
-            List<Vector3> uvs = new List<Vector3>();
-            List<BoneWeight> boneWeights = new List<BoneWeight>();
-            List<List<int>> indices = new List<List<int>>();
-            List<Vector4> colors = new List<Vector4>();
-            List<Vector4> tangents = new List<Vector4>();
-
-
-            float meshID = 0;
-            int indicesOffset = 0;
-            foreach (FLVER2.BufferLayout layout in flv.BufferLayouts)
-            {
-                Console.WriteLine("----");
-                foreach (FLVER.LayoutMember layoutMember in layout)
-                {
-                    Console.WriteLine(layoutMember.Semantic);
-                }
-            }
-            foreach (FLVER2.Mesh mesh in flv.Meshes)
-            {
-
-                List<int> currentMeshIndices = new List<int>();
-                int vertCount = 0;
-
-                foreach (FLVER.Vertex vert in mesh.Vertices)
-                {
-
-                    meshVerts.Add(new Vector3d(vert.Position.X, vert.Position.Y, vert.Position.Z));
-                    //Console.WriteLine(vert.UVs[0].X + ", " + vert.UVs[0].Y + ", " + vert.UVs[0].Z);
-                    uvs.Add(new Vector3(vert.UVs[0].X, vert.UVs[0].Y, vert.UVs[0].Z));
-
-                    if (mesh.BoneIndices.Count > 0)
-                    {
-                        boneWeights.Add(new BoneWeight(mesh.BoneIndices[vert.BoneIndices[0]], mesh.BoneIndices[vert.BoneIndices[1]], mesh.BoneIndices[vert.BoneIndices[2]], mesh.BoneIndices[vert.BoneIndices[3]],
-    vert.BoneWeights[0], vert.BoneWeights[1], vert.BoneWeights[2], vert.BoneWeights[3]));
-                    }
-
-                    colors.Add(new Vector4(vert.Colors[0].R, vert.Colors[0].G, vert.Colors[0].B, vert.Colors[0].A));
-                    if (flv.BufferLayouts[mesh.VertexBuffers[0].LayoutIndex].Exists(i => i.Semantic == FLVER.LayoutSemantic.Tangent)) { tangents.Add(new Vector4(vert.Tangents[0].X, vert.Tangents[0].Y, vert.Tangents[0].Z, vert.Tangents[0].W)); }
-                    vertCount++;
-                }
-                foreach (int i in mesh.FaceSets[0].Triangulate(false))
-                {
-
-
-                    currentMeshIndices.Add(i + indicesOffset);
-
-                }
-                //Console.WriteLine(currentMeshIndices.Count);
-                indices.Add(currentMeshIndices);
-
-                meshID++;
-                indicesOffset += vertCount;
-            }
-            Mesh bingus = new Mesh(meshVerts.ToArray(), indices.Select(a => a.ToArray()).ToArray());
-            bingus.SetUVs(0, uvs.ToArray());
-            bingus.BoneWeights = boneWeights.ToArray();
-            bingus.Colors = colors.ToArray();
-            //bingus.Tangents = tangents.ToArray();
-            bingus.RecalculateTangents();
-
-
-
-
-
-            FastQuadricMeshSimplification alg = new FastQuadricMeshSimplification();
-            alg.Initialize(bingus);
-            //alg.Agressiveness = 10;
-            //alg.MaxIterationCount = 200000;
-            alg.PreserveBorders = true;
-            alg.PreserveFoldovers = true;
-            //alg.PreserveSeams = true;
-            //alg.DecimateMesh((int)Math.Ceiling(bingus.Vertices.Count() / 3 * 0.85));
-            alg.DecimateMeshLossless();
-            Mesh bingusNoEars = alg.ToMesh();
-
-            bingusNoEars.RecalculateNormals();
-            bingusNoEars.RecalculateTangents();
-
-            int meshIDCheck = 0;
-            int vertOffset = 0;
-            foreach (FLVER2.Mesh mesh in flv.Meshes)
-            {
-                FLVER.Vertex template = mesh.Vertices[0];
-                int verticesRange = bingusNoEars.GetSubMeshIndices()[meshIDCheck].ToList().Distinct().Count();
-                if (verticesRange <= 0) continue;
-                //bingusNoEars.GetSubMeshIndices()[meshIDCheck].Length / 3;
-                mesh.Vertices.Clear();
-                //mesh.BoneIndices.Clear();
-
-
-                //for (int i = 0; i < verticesRange; i++)
-                //{
-                //    mesh.Vertices.Add(new FLVER.Vertex(template));
-                //    debugFinalVertCount++;
-                //}
-                //Dictionary<int, int> indicesToVertex = new Dictionary<int, int>();
-                //mesh.FaceSets = new List<FLVER2.FaceSet> { new FLVER2.FaceSet() };
-                //int vertIndex = 0;
-                //foreach (int indice in bingusNoEars.GetSubMeshIndices()[meshIDCheck])
-                //{
-
-                //    Console.WriteLine(bingusNoEars.BoneWeights.Length);
-                //    Console.WriteLine(bingusNoEars.VertexCount);
-                //    if (indice > debugHighestIndice)
-                //    {
-                //        debugHighestIndice = indice;
-                //    }
-                //    if (!indicesToVertex.ContainsKey(indice))
-                //    {
-                //        indicesToVertex[indice] = vertIndex;
-                //        mesh.Vertices[vertIndex].Position = new System.Numerics.Vector3((float)bingusNoEars.Vertices[indice].x,
-                //        (float)bingusNoEars.Vertices[indice].y, (float)bingusNoEars.Vertices[indice].z);
-                //        mesh.Vertices[vertIndex].Normal = MathV3toNumericsV3(bingusNoEars.Normals[indice]) * -1;
-
-                //        mesh.Vertices[vertIndex].UVs[0] = MathV3toNumericsV3(bingusNoEars.GetUVs3D(0)[indice]);
-                //        mesh.Vertices[vertIndex].Tangents = new List<System.Numerics.Vector4> { new System.Numerics.Vector4(bingusNoEars.Tangents[indice].x,
-                //            bingusNoEars.Tangents[indice].y, bingusNoEars.Tangents[indice].z, bingusNoEars.Tangents[indice].w) };
-                //        mesh.Vertices[vertIndex].BoneIndices[0] = bingusNoEars.BoneWeights[indice].boneIndex0;
-                //        mesh.Vertices[vertIndex].BoneIndices[1] = bingusNoEars.BoneWeights[indice].boneIndex1;
-                //        mesh.Vertices[vertIndex].BoneIndices[2] = bingusNoEars.BoneWeights[indice].boneIndex2;
-                //        mesh.Vertices[vertIndex].BoneIndices[3] = bingusNoEars.BoneWeights[indice].boneIndex3;
-                //        mesh.Vertices[vertIndex].BoneWeights[0] = bingusNoEars.BoneWeights[indice].boneWeight0;
-                //        mesh.Vertices[vertIndex].BoneWeights[1] = bingusNoEars.BoneWeights[indice].boneWeight1;
-                //        mesh.Vertices[vertIndex].BoneWeights[2] = bingusNoEars.BoneWeights[indice].boneWeight2;
-                //        mesh.Vertices[vertIndex].BoneWeights[3] = bingusNoEars.BoneWeights[indice].boneWeight3;
-                //        mesh.Vertices[vertIndex].Colors[0] = new FLVER.VertexColor(bingusNoEars.Colors[indice].w, bingusNoEars.Colors[indice].x,
-                //            bingusNoEars.Colors[indice].y, bingusNoEars.Colors[indice].z);
-                //        mesh.FaceSets[0].Indices.Add(vertIndex);
-                //        vertIndex++;
-                //    }
-                //    else
-                //    {
-                //        mesh.FaceSets[0].Indices.Add(indicesToVertex[indice]);
-                //    }
-                //}
-
-                for (int i = vertOffset; i < verticesRange + vertOffset; i++)
-                {
-                    //Console.WriteLine("----------");
-                    //Console.WriteLine(meshIDCheck);
-                    //Console.WriteLine(ArrayArrayLength(bingusNoEars.GetSubMeshIndices()) / 3); //more somehow
-                    //Console.WriteLine(bingusNoEars.VertexCount);
-                    //Console.WriteLine(verticesRange);
-                    //Console.WriteLine(i);
-                    //Console.WriteLine(vertOffset);
-                    mesh.Vertices.Add(new FLVER.Vertex(template));
-                    mesh.Vertices.Last().Position = new System.Numerics.Vector3((float)bingusNoEars.Vertices[i].x,
-                        (float)bingusNoEars.Vertices[i].y, (float)bingusNoEars.Vertices[i].z);
-
-
-                    //Console.WriteLine(bingusNoEars.Normals.Length);
-                    mesh.Vertices.Last().Normal = MathV3toNumericsV3(bingusNoEars.Normals[i] * -1);
-
-                    mesh.Vertices.Last().UVs[0] = MathV3toNumericsV3(bingusNoEars.GetUVs3D(0)[i]);
-
-                    if (template.Tangents.Any())
-                    {
-                        mesh.Vertices.Last().Tangents[0] = new System.Numerics.Vector4(bingusNoEars.Tangents[i].x,
-                        bingusNoEars.Tangents[i].y, bingusNoEars.Tangents[i].z, bingusNoEars.Tangents[i].w);
-                        //mesh.Vertices.Last().bi
-                        Vector3 cross;
-                        Vector3 v3Tan = new Vector3(bingusNoEars.Tangents[i].x, bingusNoEars.Tangents[i].y, bingusNoEars.Tangents[i].z);
-                        Vector3.Cross(ref bingusNoEars.Normals[i], ref v3Tan, out cross);
-                        cross = cross * bingusNoEars.Tangents[i].w;
-                        mesh.Vertices.Last().Bitangent = new System.Numerics.Vector4(cross.x, cross.y, cross.z, 0);
-                    }
-                    mesh.Vertices.Last().BoneIndices[0] = mesh.BoneIndices.IndexOf(bingusNoEars.BoneWeights[i].boneIndex0);
-                    //if (!mesh.BoneIndices.Contains(bingusNoEars.BoneWeights[i].boneIndex0)) { mesh.BoneIndices.Add(bingusNoEars.BoneWeights[i].boneIndex0); }
-                    mesh.Vertices.Last().BoneIndices[1] = mesh.BoneIndices.IndexOf(bingusNoEars.BoneWeights[i].boneIndex1);
-                    //if (!mesh.BoneIndices.Contains(bingusNoEars.BoneWeights[i].boneIndex1)) { mesh.BoneIndices.Add(bingusNoEars.BoneWeights[i].boneIndex1); }
-                    mesh.Vertices.Last().BoneIndices[2] = mesh.BoneIndices.IndexOf(bingusNoEars.BoneWeights[i].boneIndex2);
-                    //if (!mesh.BoneIndices.Contains(bingusNoEars.BoneWeights[i].boneIndex2)) { mesh.BoneIndices.Add(bingusNoEars.BoneWeights[i].boneIndex2); }
-                    mesh.Vertices.Last().BoneIndices[3] = mesh.BoneIndices.IndexOf(bingusNoEars.BoneWeights[i].boneIndex3);
-                    //if (!mesh.BoneIndices.Contains(bingusNoEars.BoneWeights[i].boneIndex3)) { mesh.BoneIndices.Add(bingusNoEars.BoneWeights[i].boneIndex3); }
-                    mesh.Vertices.Last().BoneWeights[0] = bingusNoEars.BoneWeights[i].boneWeight0;
-                    mesh.Vertices.Last().BoneWeights[1] = bingusNoEars.BoneWeights[i].boneWeight1;
-                    mesh.Vertices.Last().BoneWeights[2] = bingusNoEars.BoneWeights[i].boneWeight2;
-                    mesh.Vertices.Last().BoneWeights[3] = bingusNoEars.BoneWeights[i].boneWeight3;
-                    mesh.Vertices.Last().Colors[0] = new FLVER.VertexColor(bingusNoEars.Colors[i].w, bingusNoEars.Colors[i].x,
-                            bingusNoEars.Colors[i].y, bingusNoEars.Colors[i].z);
-
-
-
-                }
-
-                mesh.FaceSets = new List<FLVER2.FaceSet> { new FLVER2.FaceSet() { Indices = bingusNoEars.GetSubMeshIndices()[meshIDCheck].ToList() } };
-                for (int i = 0; i < mesh.FaceSets[0].Indices.Count; i++)
-                {
-                    mesh.FaceSets[0].Indices[i] -= vertOffset;
-                }
-                //mesh.BoneIndices.Sort();
-                Console.WriteLine(mesh.Vertices.Count);
-                Console.WriteLine(meshIDCheck);
-                SolveTangentsDemonsSouls(mesh, 1);
-                vertOffset += verticesRange;
-                meshIDCheck++;
-            }
-            Console.WriteLine(bingusNoEars.Indices.Length);
-            return flv;
-            //flv.Write(outputPrefix + filePath);
-        }
-
-        static void DecimateFlverBND(string filePath)
-        {
-            //uses mesh decimator on binder if it contains a flver
-            BND3 flverBND = BND3.Read(filePath);
-            foreach (BinderFile file in flverBND.Files)
-            {
-                if (file.Name.EndsWith(".flver") || file.Name.EndsWith(".flver.dcx"))
-                {
-                    FLVER2 flvFile = FLVER2.Read(file.Bytes);
-                    if (!flvFile.Meshes.Any() || flvFile.Meshes.Sum(nv => nv.Vertices.Count) <= 0) continue;
-                    Console.WriteLine(file.Name);
-                    file.Bytes = DecimateFlver(flvFile).Write();
-
-
-                }
-            }
-            flverBND.Write(PixelSoulsGlobals.outputDirectory + "dec_" + filePath);
-        }
-
-        static System.Numerics.Vector3 MathV3toNumericsV3(MeshDecimator.Math.Vector3 v3)
-        {
-            //shorthand function
-            return new System.Numerics.Vector3(v3.x, v3.y, v3.z);
         }
 
         static void SolveTangentsDemonsSouls(FLVER2.Mesh mesh, int version)

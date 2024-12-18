@@ -16,116 +16,34 @@ public enum GameType { DSR, DeS}
 
 public enum TextureType { Diffuse, Normal, Specular, Cube, Lightmap, DetailBump, Heightmap, Ignore}
 
+
 namespace PixelSouls
 {
 
     public static class PixelSoulsGlobals
     {
-        public const string baseFilesDirectory = "G:\\Code and Video Game Stuff\\Dark Souls Modding\\Pixel Souls Files\\DeS\\";
-        public const string paletteDirectory = "G:\\Code and Video Game Stuff\\Dark Souls Modding\\Pixel Souls Files\\palettes\\";
-        public const string outputDirectory = "G:\\Code and Video Game Stuff\\Dark Souls Modding\\Pixel Souls Files\\DeS\\_out\\";
+        public const string baseFilesDirectory = "C:\\Users\\thegr\\Games\\rpcs3-v0.0.31-16163-ef8afa78_win64\\games\\Demon's Souls (USA)\\PS3_GAME\\USRDIR\\"; //the path to your game files
+        public const string paletteDirectory = "C:\\Users\\thegr\\source\\repos\\PixelSouls\\PixelSouls\\palettes\\"; //the path to where you palette images are
+        public const string outputDirectory = "G:\\Code and Video Game Stuff\\Dark Souls Modding\\Pixel Souls Files\\DeS\\_build\\"; //the path to where the modified fiels should output
         
-        public const bool pixelizeCubes = false;
-        public const bool pixelizeDiffuseWithNormalAndSpecular = true;
-        public const bool pixelizeDCX = true;
-        public const bool pixelizeNonDCX = true;
+        public const bool pixelizeCubes = false; //makes pixelization ignore cubes (they are very slow to pixelize and don't work for DeS)
+        public const bool pixelizeLightmaps = false; //makes pixelization ignore lightmaps
+        public const bool pixelizeDiffuseWithNormalAndSpecular = true; //will make it so pixelization will try to find normal and specular maps for each texture and be influenced by them
+        public const bool pixelizeDCX = true; //if false, will skip over dcx files
+        public const bool pixelizeNonDCX = false; //if false, will skip over non dcx files
 
         public const GameType game = GameType.DeS;
 
         public static IMagickColor<byte> lightDirection = new MagickColor(74, 113, 255); //pixel representing the vector from the map to the light
 
         
-        public static PixelArtSetting diffusePixelSetting = new PixelArtSetting
-        {
-            Colors = new MagickImage(paletteDirectory + "general palette.png").UniqueColors().GetPixels(),
-            ColorConvertMode = "PS1",
-            DitherMatrix = "o4x4,32",
-            MaxColors = 16,
-            Contrast = 12
-        };
-        public static PixelArtSetting normalPixelSetting = new PixelArtSetting
-        {
-            Colors = new MagickImage(paletteDirectory + "no normal.png").UniqueColors().GetPixels(),
-            ColorConvertMode = "LinearRGB"
-        };
-        public static PixelArtSetting specularPixelSetting = new PixelArtSetting
-        {
-            Colors = new MagickImage(paletteDirectory + "no specular.png").UniqueColors().GetPixels(),
-            ColorConvertMode = "LinearRGB"
-        };
-        public static PixelArtSetting detailPixelSetting = new PixelArtSetting
-        {
-            Colors = new MagickImage(paletteDirectory + "no normal.png").UniqueColors().GetPixels(),
-            ColorConvertMode = "LinearRGB"
-        };
-        public static PixelArtSetting lightmapPixelSetting = new PixelArtSetting
-        {
-            Colors = new MagickImage(paletteDirectory + "general palette.png").UniqueColors().GetPixels(),
-            ColorConvertMode = "PS1",
-            MaxColors = 16,
-            ScaleFactor = 1
-        };
+        public static PixelArtSetting diffusePixelSetting = DeSGlobals.diffusePixelSetting;
+        public static PixelArtSetting normalPixelSetting = DeSGlobals.normalPixelSetting;
+        public static PixelArtSetting specularPixelSetting = DeSGlobals.specularPixelSetting;
+        public static PixelArtSetting detailPixelSetting = DeSGlobals.detailPixelSetting;
+        public static PixelArtSetting lightmapPixelSetting = DeSGlobals.lightmapPixelSetting;
 
-        public static PixelArtSettingsData internalTpfSettingsData = new PixelArtSettingsData
-        {
-            Settings = new List<PixelArtSetting>
-            {
-                new PixelArtSetting //give water waves
-                {
-                    AppliesToDiffuse = false,
-                    AppliesToNormal = true,
-                    FileNames = new List<string> {"water_n"},
-                    Colors = normalPixelSetting.Colors,
-                    ColorConvertMode = "None",
-                    MaxColors = 16
-
-                },
-                new PixelArtSetting
-                {
-                    FileNames = new List<string> {"m02_dirt_floor$"},
-                    Colors = diffusePixelSetting.Colors,
-                    ColorConvertMode = diffusePixelSetting.ColorConvertMode,
-                    DitherMatrix = diffusePixelSetting.DitherMatrix,
-                    MaxColors = diffusePixelSetting.MaxColors,
-                    Contrast = 15,
-                    Brightness = 3,
-                    ScaleFactor = 16
-                },
-                new PixelArtSetting //boletarian palace desat exceptions
-                {
-                    FileNames = new List<string> {"m02_tapestry", "m02_fallen_leaves"},
-                    Colors = diffusePixelSetting.Colors,
-                    ColorConvertMode = diffusePixelSetting.ColorConvertMode,
-                    DitherMatrix = diffusePixelSetting.DitherMatrix,
-                    MaxColors = diffusePixelSetting.MaxColors,
-                    Contrast = 15,
-                    Saturation = 115,
-                },
-                new PixelArtSetting //boletarian palace greenery
-                {
-                    FileNames = new List<string> {"m02_ground_01", "m02_grass", "m02_bush"},
-                    Colors = diffusePixelSetting.Colors,
-                    ColorConvertMode = diffusePixelSetting.ColorConvertMode,
-                    DitherMatrix = diffusePixelSetting.DitherMatrix,
-                    MaxColors = diffusePixelSetting.MaxColors,
-                    Contrast = 15,
-                    Saturation = 115,
-                    Hue = 115
-                },
-                new PixelArtSetting //shrine of storms bricks
-                {
-                    FileNames = new List<string> {"^m03.*floor_stone", "^m03.*ground_stone", "^m03.*_pillar_", "^m03.*_kaidan_", "^m03.*_relief_", "^m03.*_stairs_",
-                    "^m03.*_renga_", "^m03.*_brokc_", "^m03.*_floor_0", "^m03.*_inout_", "^m03.*_steps_", "^m03.*_broken_", "^m03.*_arch_"},
-                    Colors = diffusePixelSetting.Colors,
-                    ColorConvertMode = diffusePixelSetting.ColorConvertMode,
-                    DitherMatrix = diffusePixelSetting.DitherMatrix,
-                    MaxColors = diffusePixelSetting.MaxColors,
-                    Contrast = 10,
-                    Saturation = 105,
-                    Brightness = 8
-                }
-            }
-        };
+        public static PixelArtSettingsData internalTpfSettingsData = DeSGlobals.internalTpfSettingsData;
         public static PixelArtSettingsData internalBNDSettingsData = new PixelArtSettingsData();
 
     }

@@ -81,11 +81,11 @@ public class PixelArtSetting
     public int Hue { get; set; } = 100;
     public int Saturation { get; set; } = 100;
     public int Value { get; set; } = 100;
-    public int TintOpacity { get; set; } = 0;
+    public uint TintOpacity { get; set; } = 0;
     public MagickColor TintColor { get; set; } = new MagickColor(0, 0, 0);
 
-    public int MaxColors { get; set; } = 255;
-    public int ScaleFactor { get; set; } = 8;
+    public uint MaxColors { get; set; } = 255;
+    public uint ScaleFactor { get; set; } = 8;
 
     public string ColorConvertMode { get; set; } = "None";
     public string DitherMatrix { get; set; } = "";

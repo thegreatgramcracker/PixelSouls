@@ -16,13 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DirectXTexNet" Version="1.0.3" />
-    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="13.6.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\MeshDecimator\MeshDecimator.csproj" />
-    <ProjectReference Include="..\SoulsFormats-master\SoulsFormats\SoulsFormats.csproj" />
+    <PackageReference Include="Assimp" Version="3.0.0" />
+    <PackageReference Include="AssimpNet" Version="4.1.0" />
+    <PackageReference Include="DirectXTexNet" Version="1.0.7" />
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.0.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -38,6 +35,14 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="palettes\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\SoulsFormats-master\SoulsFormats\SoulsFormats.csproj" />
   </ItemGroup>
 
 </Project>

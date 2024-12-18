@@ -17,53 +17,39 @@ namespace PixelSouls
     {
         public static void Pixelize(this TPF tpf, PixelArtSetting setting)
         {
+            
+            //diffuse pass
             foreach (TPF.Texture tex in tpf.Textures)
             {
-                Console.WriteLine(tex.Name);
                 DXGI_FORMAT format = PixelSoulsHelpers.GetFormat(tex.Format);
-                Console.WriteLine(format);
                 TextureType textureType = PixelSoulsHelpers.GetTextureType(tex.Name, format);
+                if (textureType != TextureType.Diffuse) continue;
+                Console.WriteLine(tex.Name);
+                Console.WriteLine(format);
 
                 PixelArtSetting settingToUse = setting;
 
                 if (textureType == TextureType.Heightmap ||
-                    (textureType == TextureType.Cube && PixelSoulsGlobals.pixelizeCubes == false))
+                    (textureType == TextureType.Cube && PixelSoulsGlobals.pixelizeCubes == false) ||
+                    (textureType == TextureType.Lightmap && PixelSoulsGlobals.pixelizeLightmaps == false))
                 {
                     textureType = TextureType.Ignore;
                 }
                 Console.WriteLine(textureType);
                 if (textureType == TextureType.Ignore) continue;
 
-                /*
-                 * 1. get default settings based on texture type
-                 * 2. search for a match in the internal tpf settings (regex)
-                 * 3. if none found, use the default
-                 * 
-                 * 
-                 * 
-                 * 
-                 */
-                if (textureType == TextureType.Normal)
-                {
-                    settingToUse = PixelSoulsGlobals.normalPixelSetting;
-                    settingToUse.ScaleFactor = setting.ScaleFactor;
-                }
-                else if (textureType == TextureType.Specular)
-                {
-                    settingToUse = PixelSoulsGlobals.specularPixelSetting;
-                    settingToUse.ScaleFactor = setting.ScaleFactor;
-                }
-                else if (textureType == TextureType.Lightmap)
-                {
-                    settingToUse = PixelSoulsGlobals.lightmapPixelSetting;
-                }
                 settingToUse = PixelSoulsGlobals.internalTpfSettingsData.SearchFor(tex.Name, settingToUse, textureType);
 
-
-                if (textureType == TextureType.Diffuse && PixelSoulsGlobals.pixelizeDiffuseWithNormalAndSpecular)
+                if (textureType == TextureType.Cube)
                 {
-                    TPF.Texture? normal = tpf.Textures.Find(t => t.Name == tex.Name + "_n");
-                    TPF.Texture? spec = tpf.Textures.Find(t => t.Name == tex.Name + "_s");
+                    tex.PixelizeCube(settingToUse);
+                    continue;
+                }
+
+                if (PixelSoulsGlobals.pixelizeDiffuseWithNormalAndSpecular)
+                {
+                    TPF.Texture? normal = tpf.Textures.Find(t => (t.Name == tex.Name + "_n") || (t.Name == tex.Name + "_N"));
+                    TPF.Texture? spec = tpf.Textures.Find(t => (t.Name == tex.Name + "_s") || (t.Name == tex.Name + "_S"));
                     if (normal != null && spec != null)
                     {
                         Console.WriteLine("Diff + Norm + Spec");
@@ -89,16 +75,51 @@ namespace PixelSouls
                         continue;
                     }
                 }
-
-
-
-                if (textureType != TextureType.Ignore)
+                else
                 {
                     tex.Pixelize(settingToUse, format);
                 }
-
-                //tex.Bytes = PixelSoulsHelpers.Pixelize(tex, setting);
             }
+
+            //remaining textures pass
+            foreach (TPF.Texture tex in tpf.Textures)
+            {
+                DXGI_FORMAT format = PixelSoulsHelpers.GetFormat(tex.Format);
+                TextureType textureType = PixelSoulsHelpers.GetTextureType(tex.Name, format);
+                if (textureType == TextureType.Diffuse) continue;
+                Console.WriteLine(tex.Name);
+                Console.WriteLine(format);
+
+                PixelArtSetting settingToUse = setting;
+
+                if (textureType == TextureType.Heightmap ||
+                    (textureType == TextureType.Cube && PixelSoulsGlobals.pixelizeCubes == false) ||
+                    (textureType == TextureType.Lightmap && PixelSoulsGlobals.pixelizeLightmaps == false))
+                {
+                    textureType = TextureType.Ignore;
+                }
+                Console.WriteLine(textureType);
+                if (textureType == TextureType.Ignore) continue;
+
+                if (textureType == TextureType.Normal)
+                {
+                    settingToUse = PixelSoulsGlobals.normalPixelSetting;
+                    settingToUse.ScaleFactor = setting.ScaleFactor;
+                }
+                else if (textureType == TextureType.Specular)
+                {
+                    settingToUse = PixelSoulsGlobals.specularPixelSetting;
+                    settingToUse.ScaleFactor = setting.ScaleFactor;
+                }
+                else if (textureType == TextureType.Lightmap)
+                {
+                    settingToUse = PixelSoulsGlobals.lightmapPixelSetting;
+                }
+                settingToUse = PixelSoulsGlobals.internalTpfSettingsData.SearchFor(tex.Name, settingToUse, textureType);
+
+                tex.Pixelize(settingToUse, format);
+            }
+
         }
         public static unsafe void Pixelize(this TPF.Texture tex, PixelArtSetting setting, DXGI_FORMAT format, byte[]? passPixels = null) 
         {
@@ -110,7 +131,7 @@ namespace PixelSouls
 
             ScratchImage texImage = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), bytes.Length, DDS_FLAGS.NONE);
 
-            texImage = texImage.Decompress(DXGI_FORMAT.R8G8B8A8_UNORM);
+            if (format != DXGI_FORMAT.R8G8B8A8_UNORM) texImage =  texImage.Decompress(DXGI_FORMAT.R8G8B8A8_UNORM);
             
             var stream = texImage.SaveToDDSMemory(DDS_FLAGS.NONE);
             stream.Seek(0, SeekOrigin.Begin);
@@ -120,7 +141,12 @@ namespace PixelSouls
             pinnedArray.Free();
 
             MagickImage magickImage = new MagickImage(decompressedBytes);
+            
             magickImage.Settings.SetDefine(MagickFormat.Dds, "compression", "none");
+            
+            MagickImage originalImage = new MagickImage(magickImage);
+            uint originalWidth = magickImage.Width;
+            uint originalHeight = magickImage.Height;
 
             if (passPixels != null)
             {
@@ -131,33 +157,55 @@ namespace PixelSouls
             Console.WriteLine(magickImage.ColorSpace.ToString());
 
             bool resize = true;
-            if (magickImage.Width % setting.ScaleFactor != 0 || magickImage.Height % setting.ScaleFactor != 0)
-            {
-                resize = false;
-                Console.WriteLine("Unable to resize");
-            }
+            
+            //if (magickImage.Width % setting.ScaleFactor != 0 || magickImage.Height % setting.ScaleFactor != 0)
+            //{
+            //    resize = false;
+            //    Console.WriteLine("Unable to resize");
+            //}
             if (resize && setting.ScaleFactor != 1)
             {
                 if (magickImage.Width == setting.ScaleFactor && magickImage.Height == setting.ScaleFactor)
                 {
                     magickImage.Resize(new MagickGeometry(1));
                 }
-                else
+                else if (magickImage.Width % setting.ScaleFactor == 0 && magickImage.Height % setting.ScaleFactor == 0)
                 {
                     magickImage.Resize(magickImage.Width / setting.ScaleFactor, magickImage.Height / setting.ScaleFactor);
                     
                 }
+                else
+                {
+                    magickImage.Resize((uint)MathF.Ceiling((float)magickImage.Width / setting.ScaleFactor),
+                        (uint)MathF.Ceiling((float)magickImage.Height / setting.ScaleFactor));
+                }
             }
+            byte[] alphaPixels = null;
+            if (magickImage.HasAlpha)
+            {
+                alphaPixels = magickImage.GetPixels().ToByteArray("A");
+                foreach (Pixel pixel in magickImage.GetPixels())
+                {
+                    pixel.SetChannel(3, 255);
+                }
+            }
+            
+            
+            //magickImage.HasAlpha = true;
+            //magickImage.Format = MagickFormat.Dds;
+            //magickImage.BackgroundColor = MagickColors.Black;
+            //magickImage.Alpha(AlphaOption.Remove);
+
 
             magickImage.Modulate(new Percentage(setting.Value), new Percentage(setting.Saturation), new Percentage(setting.Hue));
             magickImage.BrightnessContrast(new Percentage(setting.Brightness), new Percentage(setting.Contrast));
             magickImage.Tint(new MagickGeometry(setting.TintOpacity), setting.TintColor);
 
+            
+            //MagickImage noAlpImage = (MagickImage)magickImage.UniqueColors();
+            //noAlpImage.Alpha(AlphaOption.Opaque);
 
-            MagickImage noAlpImage = (MagickImage)magickImage.UniqueColors();
-            noAlpImage.Alpha(AlphaOption.Off);
-
-            if (setting.MaxColors < 255 && noAlpImage.TotalColors > setting.MaxColors)
+            if (setting.MaxColors < 255 && magickImage.TotalColors > setting.MaxColors)
             {
                 
                 magickImage.Quantize(new QuantizeSettings
@@ -169,12 +217,16 @@ namespace PixelSouls
 
                 });
             }
-
             if (setting.DitherMatrix != "")
             {
-                MagickImage originalColors = new MagickImage(magickImage.UniqueColors());
-                magickImage.OrderedDither(setting.DitherMatrix);
-                magickImage.Map(originalColors);
+                if (setting.DitherMatrix == "ps1")
+                {
+                    PixelSoulsHelpers.PS1Dither(magickImage);
+                }
+                else
+                {
+                    magickImage.OrderedDither(setting.DitherMatrix);
+                }
             }
             if (setting.ColorConvertMode != "None")
             {
@@ -185,7 +237,7 @@ namespace PixelSouls
                         pixel.SetChannel(0, PixelSoulsHelpers.ConvertToPS1ColorChannel(pixel.ToColor().R));
                         pixel.SetChannel(1, PixelSoulsHelpers.ConvertToPS1ColorChannel(pixel.ToColor().G));
                         pixel.SetChannel(2, PixelSoulsHelpers.ConvertToPS1ColorChannel(pixel.ToColor().B));
-                        pixel.SetChannel(3, PixelSoulsHelpers.ConvertToPS1ColorChannel(pixel.ToColor().A));
+                        //pixel.SetChannel(3, PixelSoulsHelpers.ConvertToPS1ColorChannel(pixel.ToColor().A));
                     }
                     else
                     {
@@ -194,12 +246,26 @@ namespace PixelSouls
                         pixel.SetChannel(0, closestColor.R);
                         pixel.SetChannel(1, closestColor.G);
                         pixel.SetChannel(2, closestColor.B);
-                        pixel.SetChannel(3, closestColor.A);
+                        //pixel.SetChannel(3, closestColor.A);
                     }
                 }
             }
-            Console.WriteLine("final total colors: " + magickImage.TotalColors);
             
+            //magickImage.BackgroundColor = MagickColors.Transparent;
+            //magickImage.BackgroundColor.
+            if (alphaPixels != null)
+            {
+                int alphaIndex = 0;
+                foreach (Pixel pixel in magickImage.GetPixels())
+                {
+                    pixel.SetChannel(3, PixelSoulsHelpers.ConvertToPS1AlphaChannel(alphaPixels[alphaIndex]));
+                    alphaIndex++;
+                }
+            }
+            
+
+            Console.WriteLine("final total colors: " + magickImage.TotalColors);
+
             //else if (textureType == TextureType.Normal)
             //{
             //    foreach (Pixel pixel in magickImage.GetPixels())
@@ -210,9 +276,9 @@ namespace PixelSouls
 
             //magickImage.FilterType = FilterType.Point;
 
-
             if (resize) magickImage.Sample(magickImage.Width * setting.ScaleFactor, magickImage.Height * setting.ScaleFactor);
-            //magickImage.InterpolativeResize(magickImage.Width * setting.ScaleFactor, magickImage.Height * setting.ScaleFactor, PixelInterpolateMethod.Nearest);
+            magickImage.Crop(originalImage.Width, originalImage.Height);
+            magickImage.ResetPage();
 
 
 
@@ -221,14 +287,15 @@ namespace PixelSouls
 
             ScratchImage finalImage = TexHelper.Instance.LoadFromDDSMemory(pinnedArray2.AddrOfPinnedObject(), magickImage.ToByteArray().Length, DDS_FLAGS.NONE);
             finalImage = finalImage.GenerateMipMaps(TEX_FILTER_FLAGS.POINT, 0);
-            finalImage = finalImage.Compress(format, format == DXGI_FORMAT.BC7_UNORM ? TEX_COMPRESS_FLAGS.BC7_QUICK : TEX_COMPRESS_FLAGS.DEFAULT, 0.5f);
+            if (format != DXGI_FORMAT.R8G8B8A8_UNORM) finalImage = finalImage.Compress(format, format == DXGI_FORMAT.BC7_UNORM ? TEX_COMPRESS_FLAGS.BC7_QUICK : TEX_COMPRESS_FLAGS.DEFAULT, 0.5f);
 
-            
+
 
             if (PixelSoulsGlobals.game == GameType.DeS)
             {
                 byte* pixels = (byte*)finalImage.GetImage(0).Pixels;
                 int len = tex.Bytes.Length;
+                Console.WriteLine(len);
                 using (UnmanagedMemoryStream memoryStream = new UnmanagedMemoryStream(pixels, len, len, FileAccess.Read))
                 {
                     
@@ -245,11 +312,64 @@ namespace PixelSouls
                     
                     memoryStream.Seek(0, SeekOrigin.Begin);
                     byte[] imageBytes = new byte[memoryStream.Length];
+                    Console.WriteLine(imageBytes.Length);
                     memoryStream.Read(imageBytes);
                     tex.Bytes = imageBytes;
                 }
             }
             pinnedArray2.Free();
+        }
+
+        public static unsafe void PixelizeCube(this TPF.Texture tex, PixelArtSetting setting)
+        {
+
+            byte[] bytes = PixelSoulsGlobals.game == GameType.DeS ? tex.Headerize() : tex.Bytes;
+            GCHandle pinnedArray = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+
+            ScratchImage cubeImage = TexHelper.Instance.LoadFromDDSMemory(pinnedArray.AddrOfPinnedObject(), bytes.Length, DDS_FLAGS.NONE);
+
+            cubeImage = cubeImage.Decompress(DXGI_FORMAT.R8G8B8A8_UNORM);
+
+            for (int i = 0; i < cubeImage.GetImageCount(); i++)
+            {
+                Console.WriteLine("Image " + i);
+                var img = cubeImage.GetImage(i);
+                Console.WriteLine(img.Format);
+                Console.WriteLine(img.Width + ", " + img.Height);
+                byte* ptr = (byte*)img.Pixels;
+                int len = img.Width * img.Height * 4;
+
+                int offset = 0;
+                for (int j = 0; j < img.Width * img.Height; j++)
+                {
+                    
+                    if (setting.ColorConvertMode == "PS1")
+                    {
+                        ptr[offset] = PixelSoulsHelpers.ConvertToPS1ColorChannel(ptr[offset]);
+                        ptr[offset + 1] = PixelSoulsHelpers.ConvertToPS1ColorChannel(ptr[offset + 1]);
+                        ptr[offset + 2] = PixelSoulsHelpers.ConvertToPS1ColorChannel(ptr[offset + 2]);
+                        ptr[offset + 3] = PixelSoulsHelpers.ConvertToPS1AlphaChannel(ptr[offset + 3]);
+                    }
+                    else
+                    {
+                        MagickColor pixelColor = new MagickColor(ptr[offset], ptr[offset + 1], ptr[offset + 2], ptr[offset + 3]);
+                        IMagickColor<byte> closestColor = PixelSoulsHelpers.ClosestColor(pixelColor, PixelSoulsGlobals.diffusePixelSetting.Colors, PixelSoulsGlobals.diffusePixelSetting.ColorConvertMode);
+                        ptr[offset] = closestColor.R;
+                        ptr[offset + 1] = closestColor.G;
+                        ptr[offset + 2] = closestColor.B;
+                        ptr[offset + 3] = closestColor.A;
+                    }
+                    offset += 4;
+                }
+            }
+            cubeImage = cubeImage.Compress(DXGI_FORMAT.BC6H_UF16, TEX_COMPRESS_FLAGS.PARALLEL, 0.5f);
+            var stream = cubeImage.SaveToDDSMemory(DDS_FLAGS.NONE);
+            stream.Seek(0, SeekOrigin.Begin);
+            pinnedArray.Free();
+
+            byte[] finalBytes = new byte[stream.Length];
+            stream.Read(finalBytes);
+            tex.Bytes = finalBytes;
         }
 
         public static void PixelizeWithNormalAndSpecular(this TPF.Texture tex, TPF.Texture normal, TPF.Texture specular, PixelArtSetting setting, DXGI_FORMAT format)
@@ -266,6 +386,19 @@ namespace PixelSouls
             if (pixels.Length * 3 != pixels.Length + normalPixels.Length + specPixels.Length)
             {
                 Console.WriteLine("mismatched maps");
+                
+                if (pixels.Length * 2 == pixels.Length + normalPixels.Length)
+                {
+                    //if at least the normal dimensions match, use normal
+                    tex.PixelizeWithNormal(normal, setting, format);
+                    return;
+                }
+                else if (pixels.Length * 2 == pixels.Length + specPixels.Length)
+                {
+                    //if at least the specular dimensions match, use specular
+                    tex.PixelizeWithSpecular(specular, setting, format);
+                    return;
+                }
                 tex.Pixelize(setting, format);
                 return;
             }
@@ -276,9 +409,13 @@ namespace PixelSouls
                 IMagickColor<byte> currentPixelNormal = new MagickColor(normalPixels[i], normalPixels[i + 1], normalPixels[i + 2]);
                 IMagickColor<byte> currentPixelSpec = new MagickColor(specPixels[i], specPixels[i + 1], specPixels[i + 2]);
                 //Console.WriteLine(currentPixelSpec.ToHexString());
-                byte lightDif = PixelSoulsHelpers.ColorDifferenceLinearRGB(currentPixelNormal, PixelSoulsGlobals.lightDirection);
-                float lightMult = 1f - (Math.Clamp((float)lightDif - 85f, 0f, 255f) / (255f - 85f));
-                float specMult = lightDif / 255f;
+                //float lightDif = PixelSoulsHelpers.ColorDifferenceLinearRGB(currentPixelNormal, PixelSoulsGlobals.lightDirection); //the difference between the normal pixel and normal color that would be directly facing the light source
+                float lightDif = Vector3.Dot(CalculateNormal(PixelSoulsGlobals.lightDirection.R, PixelSoulsGlobals.lightDirection.G),
+                    CalculateNormal(currentPixelNormal.R, currentPixelNormal.G));
+                lightDif = lightDif * 0.5f + 0.5f;
+                float lightMult = Math.Clamp(lightDif + 0.1f, 0f, 1f); //the brightness of the pixel according to normal map and light direction
+                lightMult = lightMult * lightMult; // steeper falloff
+                float specMult = 0.5f * (float)Math.Pow(lightDif, 15f); //the specular highlight power according to the pixel brightness
                 pixels[i] = PixelSoulsHelpers.ClampToByte(pixels[i] * lightMult + (currentPixelSpec.R * specMult));
                 pixels[i + 1] = PixelSoulsHelpers.ClampToByte(pixels[i + 1] * lightMult + (currentPixelSpec.G * specMult));
                 pixels[i + 2] = PixelSoulsHelpers.ClampToByte(pixels[i + 2] * lightMult + (currentPixelSpec.B * specMult));
@@ -308,9 +445,13 @@ namespace PixelSouls
                 IMagickColor<byte> currentPixelNormal = new MagickColor(normalPixels[i], normalPixels[i + 1], normalPixels[i + 2]);
                 IMagickColor<byte> currentPixelSpec = new MagickColor(0, 0, 0);
                 //Console.WriteLine(currentPixelSpec.ToHexString());
-                byte lightDif = PixelSoulsHelpers.ColorDifferenceLinearRGB(currentPixelNormal, PixelSoulsGlobals.lightDirection);
-                float lightMult = 1f - (Math.Clamp((float)lightDif - 85f, 0f, 255f) / (255f - 85f));
-                float specMult = lightDif / 255f;
+                //float lightDif = PixelSoulsHelpers.ColorDifferenceLinearRGB(currentPixelNormal, PixelSoulsGlobals.lightDirection); //the difference between the normal pixel and normal color that would be directly facing the light source
+                float lightDif = Vector3.Dot(CalculateNormal(PixelSoulsGlobals.lightDirection.R, PixelSoulsGlobals.lightDirection.G),
+                    CalculateNormal(currentPixelNormal.R, currentPixelNormal.G));
+                lightDif = lightDif * 0.5f + 0.5f;
+                float lightMult = Math.Clamp(lightDif + 0.1f, 0f, 1f); //the brightness of the pixel according to normal map and light direction
+                lightMult = lightMult * lightMult; // steeper falloff
+                float specMult = 0.5f * (float)Math.Pow(lightDif, 15f); //the specular highlight power according to the pixel brightness
                 pixels[i] = PixelSoulsHelpers.ClampToByte(pixels[i] * lightMult + (currentPixelSpec.R * specMult));
                 pixels[i + 1] = PixelSoulsHelpers.ClampToByte(pixels[i + 1] * lightMult + (currentPixelSpec.G * specMult));
                 pixels[i + 2] = PixelSoulsHelpers.ClampToByte(pixels[i + 2] * lightMult + (currentPixelSpec.B * specMult));
@@ -338,9 +479,13 @@ namespace PixelSouls
                 IMagickColor<byte> currentPixel = new MagickColor(pixels[i], pixels[i + 1], pixels[i + 2]);
                 IMagickColor<byte> currentPixelNormal = new MagickColor(128, 128, 255);
                 IMagickColor<byte> currentPixelSpec = new MagickColor(specPixels[i], specPixels[i + 1], specPixels[i + 2]);
-                byte lightDif = PixelSoulsHelpers.ColorDifferenceLinearRGB(currentPixelNormal, PixelSoulsGlobals.lightDirection);
-                float lightMult = 1f - (Math.Clamp((float)lightDif - 85f, 0f, 255f) / (255f - 85f));
-                float specMult = lightDif / 255f;
+                //float lightDif = PixelSoulsHelpers.ColorDifferenceLinearRGB(currentPixelNormal, PixelSoulsGlobals.lightDirection); //the difference between the normal pixel and normal color that would be directly facing the light source
+                float lightDif = Vector3.Dot(CalculateNormal(PixelSoulsGlobals.lightDirection.R, PixelSoulsGlobals.lightDirection.G),
+                    CalculateNormal(currentPixelNormal.R, currentPixelNormal.G));
+                lightDif = lightDif * 0.5f + 0.5f;
+                float lightMult = Math.Clamp(lightDif + 0.1f, 0f, 1f); //the brightness of the pixel according to normal map and light direction
+                lightMult = lightMult * lightMult; // steeper falloff
+                float specMult = 0.5f * (float)Math.Pow(lightDif, 15f); //the specular highlight power according to the pixel brightness
                 pixels[i] = PixelSoulsHelpers.ClampToByte(pixels[i] * lightMult + (currentPixelSpec.R * specMult));
                 pixels[i + 1] = PixelSoulsHelpers.ClampToByte(pixels[i + 1] * lightMult + (currentPixelSpec.G * specMult));
                 pixels[i + 2] = PixelSoulsHelpers.ClampToByte(pixels[i + 2] * lightMult + (currentPixelSpec.B * specMult));
@@ -351,9 +496,9 @@ namespace PixelSouls
         {
             float x = (2f * (red / 255f)) - 1f;
             float y = (2f * (green / 255f)) - 1f;
-            float z =  (float)Math.Sqrt(1f - (x * x) - (y * y));
+            float z = (float)Math.Sqrt(1f - (x * x) - (y * y));
 
-            return new Vector3(x, y, z);
+            return Vector3.Normalize(new Vector3(x, y, z));
 
         }
 
